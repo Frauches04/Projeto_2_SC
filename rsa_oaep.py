@@ -21,7 +21,8 @@ def euclides_estendido(a: int, b: int) -> Tuple[int, int, int]:
 def inverso_modular(a: int, m: int) -> int:
     """
     Calcula o inverso modular de a módulo m.
-    Retorna x tal que (a * x) % m == 1
+    que é o
+    Retorna x = (a * x) % m == 1
     """
     x, y, g = euclides_estendido(a, m)
     if g != 1:
@@ -41,7 +42,7 @@ def xor_bytes(a: bytes, b: bytes) -> bytes:
     return bytes(x ^ y for x, y in zip(a, b))
 
 # ----------------------------------------------------------------------
-# 2. Teste de primalidade Miller–Rabin
+# 2. Teste se o valor é um primo ou um composto ou par usando de primalidade Miller–Rabin
 # ----------------------------------------------------------------------
 
 # SIGNIFICADO DAS SIGLAS:
@@ -68,15 +69,16 @@ def eh_primo_miller_rabin(n: int, rodadas: int = 40) -> bool:
     # Escreve n-1 como d * 2^s
     d = n - 1
     s = 0
+    #função que ira dividir d por 2 até que d seja ímpar, contando quantas vezes isso foi feito (s)
     while d % 2 == 0:
         d //= 2
         s += 1
 
     def testa_composto(a: int) -> bool:
         """Testa se a base 'a' revela que n é composto."""
-        x = pow(a, d, n)
+        x = pow(a, d, n) # x = a^d mod n
         if x == 1 or x == n - 1:
-            return False
+            return False #não sabemos se n é primo ou composto, mas a base 'a' não revelou que é composto
         for _ in range(s - 1):
             x = pow(x, 2, n)
             if x == n - 1:
@@ -92,30 +94,28 @@ def eh_primo_miller_rabin(n: int, rodadas: int = 40) -> bool:
 def gerar_primo(bits: int) -> int:
     """Gera um número primo ímpar com exatamente 'bits' bits."""
     while True:
-        # Gera número ímpar com o bit mais significativo = 1
+        # Gera número ímpar com  exatamente "bits" bits
         num = random.getrandbits(bits)
         num |= (1 << (bits - 1)) | 1   # garante tamanho e ímpar
         if eh_primo_miller_rabin(num):
-            return num
+            return num #se for primo, retorna. Senão, gera outro número e testa novamente.
 
 # ----------------------------------------------------------------------
 # 3. Geração de chaves RSA
 # ----------------------------------------------------------------------
 
-# SIGNIFICADO DAS SIGLAS NA CRIPTOGRAFIA RSA:
-# RSA = Rivest-Shamir-Adleman (algoritmo de criptografia assimétrica)
 # p, q = números primos grandes usados para gerar as chaves
 # n = módulo (produto p * q) - usado em ambas as chaves
-# φ(n) ou phi = (p-1)*(q-1) - função totiente de Euler
+# φ(n) ou phi = (p-1)*(q-1) = z - função totiente de Euler
 # e = expoente público (padrão 65537) - parte da chave pública
 # d = expoente privado (inverso de e módulo φ(n)) - parte da chave privada
 
 def gerar_chaves_rsa(bits_pq: int = 1024, e: int = 65537) -> Tuple[Tuple[int, int], Tuple[int, int]]:
     """
     Gera um par de chaves RSA.
-    bits_pq: tamanho em bits de p e q (mínimo 1024)
-    e: expoente público (padrão 65537)
-    Retorna: (chave_publica, chave_privada) onde cada chave é (expoente, modulo)
+    bits_pq: tamanho em bits de p e q (com mínimo 1024)
+    e: expoente público (padrão 65537 para evitar problemas de segurança)
+    Retorna duas tuplas: (chave_publica, chave_privada) onde cada chave é (expoente, modulo)
     """
     print(f"Gerando primo p com {bits_pq} bits...")
     p = gerar_primo(bits_pq)
@@ -124,12 +124,12 @@ def gerar_chaves_rsa(bits_pq: int = 1024, e: int = 65537) -> Tuple[Tuple[int, in
     while q == p:
         q = gerar_primo(bits_pq)
     
-    n = p * q              # módulo RSA
-    phi = (p - 1) * (q - 1)  # função totiente de Euler
+    n = p * q              # módulo RSA(será usada para ambas as chaves)
+    phi = (p - 1) * (q - 1)  # função totiente de Euler (z)
 
-    # Garantir que e e phi sejam coprimos (muito raro com e=65537)
+    # Garantir que e e phi sejam coprimos
     if math.gcd(e, phi) != 1:
-        raise ValueError("e não é coprimo com phi. Tente outro expoente.")
+        raise ValueError("e não é coprimo com phi. Tente outro expoente.") #o código para gerar chaves, mas a chance de isso acontecer é praticamente nula com e=65537
     
     d = inverso_modular(e, phi)  # expoente privado
     print("Chaves geradas com sucesso.")
@@ -186,19 +186,27 @@ def oaep_codificar(mensagem: bytes, k: int, rotulo: bytes = b'',
     rotulo: rótulo opcional (normalmente vazio)
     Retorna EM (mensagem codificada) de comprimento k bytes.
     """
+    #Calcula o tamanho máximo da mensagem que pode ser codificada com OAEP dado o tamanho do módulo RSA (k) e o tamanho do hash. Se a mensagem for muito longa, levanta um erro.
     tamanho_hash = funcao_hash().digest_size
+    
+    #Verificar se a mensagem cabe no bloco OAEP
     tamanho_msg = len(mensagem)
+    
+    #O tamanho máximo da mensagem é dado por: max_tamanho_msg = k - 2 * tamanho_hash - 2
     max_tamanho_msg = k - 2 * tamanho_hash - 2
     if tamanho_msg > max_tamanho_msg:
         raise ValueError(f"Mensagem muito longa (máx {max_tamanho_msg} bytes)")
 
+    #lHash = hash do rótulo (rotulo pode ser vazio, mas ainda assim é processado pela função de hash)
     hash_rotulo = funcao_hash(rotulo).digest()  # lHash
 
     # PS = sequência de zeros
+    #O tamanho de PS é calculado para preencher o espaço restante entre lHash, a mensagem e os bytes fixos (0x00, 0x01). O cálculo é: tamanho_ps = k - tamanho_msg - 2 * tamanho_hash - 2
     tamanho_ps = k - tamanho_msg - 2 * tamanho_hash - 2
     ps = b'\x00' * tamanho_ps
 
     # DB = lHash || PS || 0x01 || M
+    #O bloco de dados (DB) é formado pela concatenação do hash do rótulo (lHash), a string de preenchimento (PS), um byte separador (0x01) e a mensagem original (M).
     bloco_dados = hash_rotulo + ps + b'\x01' + mensagem
 
     # Semente aleatória
@@ -271,10 +279,16 @@ def rsa_cifrar_oaep(mensagem: bytes, chave_publica: Tuple[int, int], rotulo: byt
     chave_publica = (e, n)
     Retorna texto cifrado (bytes de tamanho k = comprimento de n em bytes).
     """
-    e, n = chave_publica
+    e, n = chave_publica # e = expoente público, n = módulo
     k = (n.bit_length() + 7) // 8   # bytes do módulo
+    
+    #Pegam a mensagem e a codificam usando OAEP, gerando um bloco de dados do tamanho do módulo RSA (k bytes). Depois, convertem esse bloco de dados para um inteiro, aplicam a operação de cifração RSA (c = m^e mod n) e convertem o resultado de volta para bytes.
     msg_codificada = oaep_codificar(mensagem, k, rotulo, hashlib.sha3_256)
+    
+    # Converter a mensagem codificada para inteiro, cifrar e converter de volta para bytes
     inteiro_msg = bytes_para_int(msg_codificada)
+    
+    #Cifrar usando RSA: c = m^e mod n
     inteiro_cifrado = pow(inteiro_msg, e, n)
     return int_para_bytes(inteiro_cifrado, k)
 
@@ -284,11 +298,21 @@ def rsa_decifrar_oaep(texto_cifrado: bytes, chave_privada: Tuple[int, int], rotu
     chave_privada = (d, n)
     Retorna a mensagem original.
     """
-    d, n = chave_privada
+    d, n = chave_privada # d = expoente privado, n = módulo
     k = (n.bit_length() + 7) // 8
+    
+    #Verificam se o tamanho do texto cifrado é igual a k (tamanho do módulo em bytes). Se não for, levantam um erro de decifração. Depois, convertem o texto cifrado para um inteiro, aplicam a operação de decifração RSA (m = c^d mod n) e convertem o resultado de volta para bytes. Por fim, aplicam a função de decodificação OAEP para recuperar a mensagem original.
     if len(texto_cifrado) != k:
         raise ValueError("erro de decifração: tamanho do texto cifrado inválido")
+    
+    #Converter o texto cifrado para inteiro, decifrar e converter de volta para bytes
     inteiro_cifrado = bytes_para_int(texto_cifrado)
+    
+    #Decifrar usando RSA: m = c^d mod n
     inteiro_msg = pow(inteiro_cifrado, d, n)
+
+    #Converter o inteiro da mensagem decifrada para bytes e aplicar OAEP para recuperar a mensagem original
     msg_codificada = int_para_bytes(inteiro_msg, k)
+    
+    #Aplicar OAEP para recuperar a mensagem original. Se houver qualquer problema (tamanho incorreto, hash do rótulo não confere, formato inválido), a função de decodificação OAEP irá levantar um erro de decifração.
     return oaep_decodificar(msg_codificada, k, rotulo, hashlib.sha3_256)
