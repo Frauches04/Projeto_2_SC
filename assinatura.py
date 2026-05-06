@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# assinatura.py - Funções para assinatura digital RSA + SHA-3 + Base64
-
 import os
 import hashlib
 import base64

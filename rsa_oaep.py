@@ -45,12 +45,6 @@ def xor_bytes(a: bytes, b: bytes) -> bytes:
 # 2. Teste se o valor é um primo ou um composto ou par usando de primalidade Miller–Rabin
 # ----------------------------------------------------------------------
 
-# SIGNIFICADO DAS SIGLAS:
-# Miller-Rabin = algoritmo probabilístico para testar primalidade
-# n = número a ser testado
-# k = número de rodadas do teste (precisão)
-# d = parte ímpar de n-1 (n-1 = d * 2^s)
-# s = expoente de 2 em n-1 (quantidade de divisões por 2)
 
 def eh_primo_miller_rabin(n: int, rodadas: int = 40) -> bool:
     """
@@ -104,11 +98,6 @@ def gerar_primo(bits: int) -> int:
 # 3. Geração de chaves RSA
 # ----------------------------------------------------------------------
 
-# p, q = números primos grandes usados para gerar as chaves
-# n = módulo (produto p * q) - usado em ambas as chaves
-# φ(n) ou phi = (p-1)*(q-1) = z - função totiente de Euler
-# e = expoente público (padrão 65537) - parte da chave pública
-# d = expoente privado (inverso de e módulo φ(n)) - parte da chave privada
 
 def gerar_chaves_rsa(bits_pq: int = 1024, e: int = 65537) -> Tuple[Tuple[int, int], Tuple[int, int]]:
     """
@@ -139,13 +128,6 @@ def gerar_chaves_rsa(bits_pq: int = 1024, e: int = 65537) -> Tuple[Tuple[int, in
 # 4. MGF1 (Mask Generation Function) baseada em SHA-3
 # ----------------------------------------------------------------------
 
-# SIGNIFICADO:
-# MGF1 = Mask Generation Function 1 (Função Geradora de Máscara versão 1)
-# seed = semente (valor aleatório inicial que será expandido)
-# length = comprimento desejado da saída em bytes
-# hash_func = função hash utilizada (SHA-3 no nosso caso)
-# counter = contador para gerar blocos sequenciais
-# hlen = comprimento do hash em bytes (hash length)
 
 def mgf1(semente: bytes, comprimento: int, funcao_hash: Callable = hashlib.sha3_256) -> bytes:
     """
@@ -164,19 +146,6 @@ def mgf1(semente: bytes, comprimento: int, funcao_hash: Callable = hashlib.sha3_
 # ----------------------------------------------------------------------
 # 5. OAEP (Encoding e Decoding)
 # ----------------------------------------------------------------------
-
-# SIGNIFICADO DAS SIGLAS NO OAEP:
-# OAEP = Optimal Asymmetric Encryption Padding (Preenchimento Ótimo para Criptografia Assimétrica)
-# 
-# lHash = hash do label (hash do rótulo opcional L)
-# PS = Padding String (sequência de zeros para preenchimento)
-# DB = Data Block (bloco de dados) = lHash || PS || 0x01 || M
-# seed = semente aleatória (gerada a cada cifração)
-# MGF = Mask Generation Function (função geradora de máscara)
-# maskedDB = DB mascarado (DB XOR MGF(seed))
-# maskedSeed = seed mascarado (seed XOR MGF(maskedDB))
-# EM = Encoded Message (mensagem codificada) = 0x00 || maskedSeed || maskedDB
-# k = comprimento do módulo RSA em bytes
 
 def oaep_codificar(mensagem: bytes, k: int, rotulo: bytes = b'',
                    funcao_hash: Callable = hashlib.sha3_256) -> bytes:
